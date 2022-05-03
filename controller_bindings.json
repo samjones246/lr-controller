@@ -10,8 +10,8 @@
     "equipHammer": ["DPAD_LEFT"],
     "equipCoin": ["DPAD_RIGHT"],
     "equipDust": ["DPAD_DOWN"],
-    "action": ["R1", "R2"],
-    "altAction": ["L1", "L2"],
-    "move_sprint": ["L3"],
+    "action": ["RB", "RT"],
+    "altAction": ["LB", "LT"],
+    "move_sprint": ["LS"],
     "dialogue_advance": ["A"]
 }
