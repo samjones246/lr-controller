@@ -3,6 +3,8 @@ extends Node
 var deadzone = 0.2
 var sensMult = 5
 var player : Node
+var dialogue : Node
+var give_up : Node
 var CONFIG_NAME = "controller_bindings.json"
 
 var BUTTON_NAMES = {
@@ -160,9 +162,14 @@ func load_bindings():
 
 
 func _process(_delta):
-	# A new instance of player is created when the scene changes, so update reference each frame in case it changed
-	player = null
-	player = get_tree().current_scene.get_node_or_null("ViewportContainer/Viewport/Player")
+	# Refresh node references in case the scene changed
+	var vpcont = get_tree().current_scene.get_node_or_null("ViewportContainer")
+	if vpcont != null:
+		player = vpcont.get_node_or_null("Viewport/Player")
+		dialogue = vpcont.get_node_or_null("dialogue")
+		give_up = vpcont.get_node_or_null("give up ")
+
+	# If no player exists in the current scene there's nothing to do here
 	if player == null:
 		return
 
@@ -180,9 +187,19 @@ func _process(_delta):
 func _input(event):
 	# Handle our custom dialogue_advance action
 	if event.is_action_pressed("dialogue_advance"):
-		var dialogue = get_tree().current_scene.get_node_or_null("ViewportContainer/dialogue")
 		if dialogue != null and dialogue.catchClick:
 			dialogue.advance()
 			dialogue.catchClick = false
+
+	# Handle the 'give up tool' screen
+	if give_up != null and give_up.visible:
+		if event.is_action_pressed("equipPogo") and give_up.pogo.visible:
+			give_up._on_pogo_pressed()
+		elif event.is_action_pressed("equipHammer") and give_up.hammer.visible:
+			give_up._on_hammer_pressed()
+		elif event.is_action_pressed("equipCoin") and give_up.coin.visible:
+			give_up._on_coin_pressed()
+		elif event.is_action_pressed("equipDust") and give_up.spray.visible:
+			give_up._on_bottle_pressed()
 
 			
