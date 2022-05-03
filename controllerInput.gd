@@ -3,7 +3,6 @@ extends Node
 var deadzone = 0.2
 var sensMult = 5
 var player : Node
-var input_swapped = false
 var CONFIG_NAME = "controller_bindings.json"
 
 var BUTTON_NAMES = {
@@ -25,10 +24,12 @@ var BUTTON_NAMES = {
 	"DPAD_RIGHT": JOY_DPAD_RIGHT,
 }
 
+# List of aliases for actions which can be used in the config file
 var ACTION_SUBS = {
 	"pause":"ui_cancel"
 }
 
+# Mapping from actions to buttons. Populated with default controls but will be overwritten by config file if present
 var button_actions = {
 	"ui_cancel": [JOY_START],
 	"objective": [JOY_SELECT],
@@ -46,18 +47,19 @@ var button_actions = {
 	"dialogue_advance": [JOY_XBOX_A]
 }
 
-
-
-var action_queue = []
-
 func _ready():
+	# Adjust movement deadzones to be suitable for controller
 	InputMap.action_set_deadzone("move_left", 0.2)
 	InputMap.action_set_deadzone("move_right", 0.2)
 	InputMap.action_set_deadzone("move_forward", 0.2)
 	InputMap.action_set_deadzone("move_backward", 0.2)
 
+	# Dialogue advance is not an action which the game defines, so we define it here and handle it ourselves.
+	# Normally the game check the 'action' action for advancing dialogue, but for controller it's desirable to have
+	# a seperate binding
 	InputMap.add_action("dialogue_advance")
 
+	# Add left stick movements to movement actions
 	var ev = InputEventJoypadMotion.new()
 	ev.axis = JOY_AXIS_0
 	ev.axis_value = - 1.0
@@ -80,6 +82,7 @@ func _ready():
 
 	load_bindings()
 	
+	# Register mappings
 	for action in button_actions:
 		for button in button_actions[action]:
 			ev = InputEventJoypadButton.new()
@@ -87,16 +90,22 @@ func _ready():
 			ev.pressed = true
 			InputMap.action_add_event(action, ev)
 
+	# By default, JOY_XBOX_B is registered under the ui_cancel action. The game uses this action to pause, so we need to
+	# remove this button from the action so that the game doesn't pause when the player presses B.
 	ev = InputEventJoypadButton.new()
-	ev.button_index = JOY_BUTTON_1
+	ev.button_index = JOY_XBOX_B
 	InputMap.action_erase_event("ui_cancel", ev)
 
+
+# Attempt to load controller bindings from file
 func load_bindings():
+	# Need to set path differently depending on whether we're in a testing or production environment
 	var path = ""
 	if OS.has_feature("editor"):
 		path = "res://mods/" + CONFIG_NAME
 	else:
 		path = OS.get_executable_path().get_base_dir().plus_file("mods/" + CONFIG_NAME)
+		
 	var file : File = File.new()
 	if file.open(path, File.READ) == OK:
 		var json = file.get_as_text()
@@ -104,12 +113,15 @@ func load_bindings():
 		if data.error == OK:
 			if typeof(data.result) == TYPE_DICTIONARY:
 				for action in data.result:
+					# Handle sens_mult seperately
 					if action == "sens_mult":
 						if typeof(data.result[action]) != TYPE_REAL or data.result[action] <= 0:
 							printerr("Value for sens_mult must be a positive number")
 							continue
 						sensMult = data.result[action]
 						continue
+					# This var stores the actual action name after alias substitution has potentially happened
+					# The original string is still used to reference the json
 					var subbed_action = action
 					if action in ACTION_SUBS:
 						subbed_action = ACTION_SUBS[action]
@@ -119,12 +131,14 @@ func load_bindings():
 					if typeof(data.result[action]) == TYPE_ARRAY:
 						button_actions[subbed_action] = []
 						for button in data.result[action]:
+							# Determine which button has been specified (or error and skip if invalid), and add it to the bindings dict
 							var btnVal
 							if typeof(button) == TYPE_REAL:
 								if int(button) >= 0 and int(button) < JOY_BUTTON_MAX:
 									btnVal = int(button)
 								else:
 									printerr("Error reading bindings for action " + action + ": " + button + " is not a valid button number")
+									continue
 							elif typeof(button) == TYPE_STRING:
 								if button in BUTTON_NAMES:
 									btnVal = BUTTON_NAMES[button]
@@ -146,32 +160,25 @@ func load_bindings():
 
 
 func _process(_delta):
+	# A new instance of player is created when the scene changes, so update reference each frame in case it changed
 	player = null
 	player = get_tree().current_scene.get_node_or_null("ViewportContainer/Viewport/Player")
 	if player == null:
 		return
 
+	# If player isn't processing then aim shouldn't be handled right now
 	if not player.is_processing():
 		return
+
+	# Detect right stick movement and pass it on to the player to handle like mouse movement
 	if Input.get_connected_joypads().size() > 0:
 		var joy_axis = Vector2(Input.get_joy_axis(0, JOY_AXIS_2), Input.get_joy_axis(0, JOY_AXIS_3))
 		if joy_axis.length() > deadzone:
-			camera_rotation(joy_axis)
-
-func camera_rotation(joy_axis : Vector2):
-	if joy_axis.length() > deadzone:
-		var horizontal = - joy_axis.x * (Global.playerSensitivity / 100) * sensMult
-		var vertical = - joy_axis.y * (Global.playerSensitivity / 100) * sensMult
-
-		player.rotate_y(deg2rad(horizontal) / (10 / Global.sens))
-		player.head.rotate_x(deg2rad(vertical) / (10 / Global.sens))
-		
-		
-		var temp_rot:Vector3 = player.head.rotation_degrees
-		temp_rot.x = clamp(temp_rot.x, - 90, 90)
-		player.head.rotation_degrees = temp_rot
+			player.mouse_axis = joy_axis * sensMult
+			player.camera_rotation()
 
 func _input(event):
+	# Handle our custom dialogue_advance action
 	if event.is_action_pressed("dialogue_advance"):
 		var dialogue = get_tree().current_scene.get_node_or_null("ViewportContainer/dialogue")
 		if dialogue != null and dialogue.catchClick:
