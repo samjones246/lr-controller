@@ -3,6 +3,7 @@ extends Node
 var deadzone = 0.2
 var sensMult = 5
 var player : Node
+var input_swapped = false
 
 var button_actions = {
 	JOY_START: "ui_cancel",
@@ -21,6 +22,8 @@ var button_actions = {
 	JOY_L2: "altAction",
 	JOY_L3: "move_sprint"
 }
+
+var action_queue = []
 
 func _ready():
 	InputMap.action_set_deadzone("move_left", 0.2)
@@ -63,6 +66,16 @@ func _process(_delta):
 	player = get_tree().current_scene.get_node_or_null("ViewportContainer/Viewport/Player")
 	if player == null:
 		return
+	if player.frozen != input_swapped:
+		var ev = InputEventJoypadButton.new()
+		ev.button_index = JOY_XBOX_A
+		ev.pressed = true
+		if input_swapped:
+			InputMap.action_erase_event("action", ev)
+		else:
+			InputMap.action_add_event("action", ev)
+		input_swapped = player.frozen
+
 	if not player.is_processing():
 		return
 	if Input.get_connected_joypads().size() > 0:
@@ -83,15 +96,21 @@ func camera_rotation(joy_axis : Vector2):
 		temp_rot.x = clamp(temp_rot.x, - 90, 90)
 		player.head.rotation_degrees = temp_rot
 
-func equip(action):
-	var ev = InputEventAction.new()
-	ev.action = action
-	ev.pressed = true
-	print("Sending " + ev.action)
-	Input.parse_input_event(ev)
-
 func _input(event):
 	if event is InputEventJoypadButton:
 		if not event.pressed:
 			return
+		if event.button_index == JOY_XBOX_A:
+			var dialogue = get_tree().current_scene.get_node_or_null("ViewportContainer/dialogue")
+			if dialogue != null and player.frozen:
+				var ev = InputEventAction.new()
+				ev.action = "action"
+				ev.pressed = true
+				dialogue._input(ev)
+			elif player != null:
+				var ev = InputEventAction.new()
+				ev.action = "move_jump"
+				ev.pressed = true
+				player._input(ev)
+
 			
