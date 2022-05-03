@@ -121,6 +121,7 @@ func load_bindings():
 	var file : File = File.new()
 	if file.open(path, File.READ) == OK:
 		var json = file.get_as_text()
+		file.close()
 		var data = JSON.parse(json)
 		if data.error == OK:
 			if typeof(data.result) == TYPE_DICTIONARY:
