@@ -1,0 +1,17 @@
+{
+    "sens_mult": 10.0,
+	"pause": ["START"],
+	"objective": ["SELECT"],
+	"move_jump": ["A"],
+	"reload": ["B"],
+	"Interact": ["X"],
+	"respawn": ["Y"],
+    "equipPogo": ["DPAD_UP"],
+    "equipHammer": ["DPAD_LEFT"],
+    "equipCoin": ["DPAD_RIGHT"],
+    "equipDust": ["DPAD_DOWN"],
+    "action": ["R1", "R2"],
+    "altAction": ["L1", "L2"],
+    "move_sprint": ["L3"],
+    "dialogue_advance": ["A"]
+}
