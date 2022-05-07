@@ -1,5 +1,6 @@
 {
     "sens_mult": 10.0,
+    "toggle_sprint": true,
 	"pause": ["START"],
 	"objective": ["SELECT"],
 	"move_jump": ["A"],

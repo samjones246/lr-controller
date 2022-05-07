@@ -1,11 +1,12 @@
 extends Node
 
 var deadzone = 0.2
-var sensMult = 5
+var sensMult = 10
 var player : Node
 var dialogue : Node
 var give_up : Node
 var CONFIG_NAME = "controller_bindings.json"
+var toggle_sprint = true
 
 var BUTTON_NAMES = {
 	"A": JOY_XBOX_A,
@@ -70,6 +71,7 @@ func _ready():
 	# Normally the game check the 'action' action for advancing dialogue, but for controller it's desirable to have
 	# a seperate binding
 	InputMap.add_action("dialogue_advance")
+	InputMap.add_action("move_toggle_sprint")
 
 	# Add left stick movements to movement actions
 	var ev = InputEventJoypadMotion.new()
@@ -100,7 +102,10 @@ func _ready():
 			ev = InputEventJoypadButton.new()
 			ev.button_index = button
 			ev.pressed = true
-			InputMap.action_add_event(action, ev)
+			if action == "move_sprint" and toggle_sprint:
+				InputMap.action_add_event("move_toggle_sprint", ev)
+			else:	
+				InputMap.action_add_event(action, ev)
 
 	# By default, JOY_XBOX_B is registered under the ui_cancel action. The game uses this action to pause, so we need to
 	# remove this button from the action so that the game doesn't pause when the player presses B.
@@ -126,12 +131,18 @@ func load_bindings():
 		if data.error == OK:
 			if typeof(data.result) == TYPE_DICTIONARY:
 				for action in data.result:
-					# Handle sens_mult seperately
+					# Handle sens_mult/toggle_sprint seperately
 					if action == "sens_mult":
 						if typeof(data.result[action]) != TYPE_REAL or data.result[action] <= 0:
 							printerr("Value for sens_mult must be a positive number")
 							continue
 						sensMult = data.result[action]
+						continue
+					if action == "toggle_sprint":
+						if typeof(data.result[action]) != TYPE_BOOL:
+							printerr("Value for toggle_sprint must be a boolean")
+							continue
+						toggle_sprint = data.result[action]
 						continue
 					# This var stores the actual action name after alias substitution has potentially happened
 					# The original string is still used to reference the json
@@ -195,6 +206,10 @@ func _process(_delta):
 			player.mouse_axis = joy_axis * sensMult
 			player.camera_rotation()
 
+	if player.move_axis.length() == 0:
+		Input.action_release("move_sprint")
+
+
 func _input(event):
 	# Handle our custom dialogue_advance action
 	if event.is_action_pressed("dialogue_advance"):
@@ -212,5 +227,9 @@ func _input(event):
 			give_up._on_coin_pressed()
 		elif event.is_action_pressed("equipDust") and give_up.spray.visible:
 			give_up._on_bottle_pressed()
+
+	if event.is_action_pressed("move_toggle_sprint"):
+		if event.pressed:
+			Input.action_press("move_sprint")
 
 			

@@ -33,6 +33,7 @@ Controls and sensitivity can be changed by editing `controller_bindings.json`. T
 
     {
         "sens_mult": x,
+        "toggle_sprint": <true/false>,
         "<action>":["<button>", "<button>", ...],
         "<action>":["<button>", "<button>", ...],
         ...
